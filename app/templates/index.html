@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="grid two">
+  <form class="panel" method="post" action="/text">
+    <h2>Nueva nota comercial</h2>
+    <textarea name="text" rows="8" placeholder="Ej: Me junté con Cliente A. Le interesa financiamiento en dólares. Volver a escribirle el jueves." required></textarea>
+    <button type="submit">Guardar e interpretar</button>
+  </form>
+
+  <form class="panel" method="post" action="/upload" enctype="multipart/form-data">
+    <h2>Subir audio, Excel o documento</h2>
+    <input type="file" name="file" required>
+    <p class="hint">Audio: transcripción local simulada si no hay faster-whisper. Excel: lee clientes, montos, etapas y próximos pasos.</p>
+    <button type="submit">Procesar archivo</button>
+  </form>
+</section>
+
+<section class="toolbar">
+  <form method="get" action="/command">
+    <input name="q" placeholder="/pendientes, /hoy, /pipeline, /buscar texto">
+    <button type="submit">Ejecutar</button>
+  </form>
+  <form method="post" action="/summary">
+    <button type="submit">Generar resumen diario</button>
+  </form>
+</section>
+
+<section class="grid three">
+  <div class="panel">
+    <h2>Follow-ups de hoy</h2>
+    {% for task in tasks_today %}
+      <article class="item"><strong>{{ task.client_alias or "Sin cliente" }}</strong><span>{{ task.description }}</span><small>{{ task.due_date }} · {{ task.priority }}</small></article>
+    {% else %}
+      <p class="empty">No hay follow-ups para hoy.</p>
+    {% endfor %}
+  </div>
+  <div class="panel">
+    <h2>Vencidas</h2>
+    {% for task in overdue %}
+      <article class="item warn"><strong>{{ task.client_alias or "Sin cliente" }}</strong><span>{{ task.description }}</span><small>{{ task.due_date }}</small></article>
+    {% else %}
+      <p class="empty">No hay tareas vencidas.</p>
+    {% endfor %}
+  </div>
+  <div class="panel">
+    <h2>Ambiguos</h2>
+    {% for item in unresolved %}
+      <article class="item"><strong>{{ item.value }}</strong><span>{{ item.reason }}</span></article>
+    {% else %}
+      <p class="empty">Nada pendiente de revisión.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="grid two">
+  <div class="panel">
+    <h2>Últimas notas</h2>
+    {% for note in notes %}
+      <article class="item"><strong>{{ note.client_alias or "Sin cliente" }}</strong><span>{{ note.summary }}</span><small>{{ note.created_at.strftime("%Y-%m-%d %H:%M") }}</small></article>
+    {% else %}
+      <p class="empty">Todavía no cargaste notas.</p>
+    {% endfor %}
+  </div>
+  <div class="panel">
+    <h2>Pipeline</h2>
+    {% for opp in opportunities %}
+      <article class="item"><strong>{{ opp.client_alias or (opp.company.name if opp.company else "Sin cliente") }}</strong><span>{{ opp.product_or_need or "Necesidad sin especificar" }}</span><small>{{ opp.stage }} · {{ opp.currency or "" }} {{ opp.amount or "" }}</small></article>
+    {% else %}
+      <p class="empty">Pipeline vacío.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<section class="panel summary">
+  <h2>Último resumen diario</h2>
+  {% if summary %}
+    <pre>{{ summary.content }}</pre>
+  {% else %}
+    <p class="empty">Generá el primer resumen desde el botón superior.</p>
+  {% endif %}
+</section>
+{% endblock %}
