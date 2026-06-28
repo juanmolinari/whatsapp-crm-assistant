@@ -62,46 +62,75 @@ def generate_daily_summary(db: Session, summary_date: date) -> models.DailySumma
 
 
 def render_summary(summary_date, notes, new_tasks, overdue, today_tasks, opportunities, unresolved) -> str:
-    touched = sorted({note.client_alias or "Sin cliente" for note in notes})
-    lines = [
-        f"Resumen diario - {summary_date.isoformat()}",
-        "",
-        "1. Resumen de ayer",
-        _bullets([note.summary for note in notes], "Sin notas registradas ayer."),
-        "2. Clientes tocados",
-        _bullets(touched, "No hubo clientes identificados."),
-        "3. Tareas nuevas",
-        _bullets([_task_line(task) for task in new_tasks], "No se crearon tareas nuevas."),
-        "4. Tareas vencidas",
-        _bullets([_task_line(task) for task in overdue], "No hay tareas vencidas."),
-        "5. Follow-ups para hoy",
-        _bullets([_task_line(task) for task in today_tasks], "No hay follow-ups fechados para hoy."),
-        "6. Oportunidades abiertas",
-        _bullets([_opportunity_line(opp) for opp in opportunities], "No hay oportunidades abiertas cargadas."),
-        "7. Riesgos o temas sin resolver",
-        _bullets([f"{item.value}: {item.reason}" for item in unresolved], "No hay ambiguos pendientes."),
-        "8. Próximas acciones recomendadas",
-        _bullets([_task_line(task) for task in overdue[:3] + today_tasks[:5]], "Cargar nuevas notas comerciales o revisar pipeline."),
-        "9. Panorama general de la cartera",
-        f"- {len(opportunities)} oportunidades abiertas, {len(today_tasks)} follow-ups para hoy, {len(overdue)} tareas vencidas.",
+    touched = sorted({note.client_alias for note in notes if note.client_alias})
+    sections = [
+        ("Resumen de ayer", [note.summary for note in notes]),
+        ("Clientes tocados", touched),
+        ("Tareas nuevas", [_task_line(task) for task in new_tasks]),
+        ("Tareas vencidas", [_task_line(task) for task in overdue]),
+        ("Follow-ups para hoy", [_task_line(task) for task in today_tasks]),
+        ("Oportunidades abiertas", [_opportunity_line(opp) for opp in opportunities]),
+        ("Riesgos o temas sin resolver", [f"{item.value}: {item.reason}" for item in unresolved]),
+        ("Próximas acciones recomendadas", [_task_line(task) for task in overdue[:3] + today_tasks[:5]]),
     ]
+    panorama = _portfolio_line(opportunities, today_tasks, overdue)
+
+    lines = [f"Resumen diario - {summary_date.isoformat()}"]
+    section_number = 1
+    for title, items in sections:
+        clean_items = _clean_items(items)
+        if not clean_items:
+            continue
+        lines.extend(["", f"{section_number}. {title}", _bullets(clean_items)])
+        section_number += 1
+    if panorama:
+        lines.extend(["", f"{section_number}. Panorama general de la cartera", f"- {panorama}"])
+    if len(lines) == 1:
+        lines.extend(["", "Sin actividad registrada para los campos del resumen."])
     return "\n".join(lines)
 
 
-def _bullets(items, empty: str) -> str:
-    clean = [str(item) for item in items if str(item).strip()]
-    if not clean:
-        return f"- {empty}"
-    return "\n".join(f"- {item}" for item in clean)
+def _bullets(items) -> str:
+    return "\n".join(f"- {item}" for item in _clean_items(items))
+
+
+def _clean_items(items) -> list[str]:
+    return [str(item) for item in items if str(item).strip()]
 
 
 def _task_line(task: models.Task) -> str:
-    due = task.due_date.isoformat() if task.due_date else "sin fecha"
-    client = task.client_alias or "sin cliente"
-    return f"{client}: {task.description} ({due}, {task.priority})"
+    prefix = f"{task.client_alias}: " if task.client_alias else ""
+    details = []
+    if task.due_date:
+        details.append(task.due_date.isoformat())
+    if task.priority:
+        details.append(task.priority)
+    suffix = f" ({', '.join(details)})" if details else ""
+    return f"{prefix}{task.description}{suffix}"
 
 
 def _opportunity_line(opp: models.Opportunity) -> str:
-    amount = f"{opp.currency or ''} {opp.amount:,.0f}" if opp.amount else "monto s/d"
-    client = opp.client_alias or (opp.company.name if opp.company else "sin cliente")
-    return f"{client}: {opp.product_or_need or 'necesidad s/d'} - {opp.stage} - {amount}"
+    client = opp.client_alias or (opp.company.name if opp.company else None)
+    parts = []
+    if opp.product_or_need:
+        parts.append(opp.product_or_need)
+    if opp.stage and opp.stage != "unknown":
+        parts.append(opp.stage)
+    if opp.amount:
+        parts.append(f"{opp.currency or ''} {opp.amount:,.0f}".strip())
+    if client and parts:
+        return f"{client}: {' - '.join(parts)}"
+    if client:
+        return client
+    return " - ".join(parts)
+
+
+def _portfolio_line(opportunities, today_tasks, overdue) -> str:
+    parts = []
+    if opportunities:
+        parts.append(f"{len(opportunities)} oportunidades abiertas")
+    if today_tasks:
+        parts.append(f"{len(today_tasks)} follow-ups para hoy")
+    if overdue:
+        parts.append(f"{len(overdue)} tareas vencidas")
+    return ", ".join(parts)
