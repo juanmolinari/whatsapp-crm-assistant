@@ -85,7 +85,7 @@ def upload_file(file: UploadFile = File(...), db: Session = Depends(get_db)):
     suffix = stored.suffix.lower()
     if suffix in {".xlsx", ".xls"}:
         process_excel(db, stored)
-    elif suffix in {".mp3", ".wav", ".m4a", ".ogg", ".webm"}:
+    elif suffix in {".mp3", ".wav", ".m4a", ".ogg", ".oga", ".webm"}:
         transcript = transcribe_audio(stored)
         parsed = parse_text(transcript)
         raw = save_parsed_input(db, "audio", transcript, parsed)
