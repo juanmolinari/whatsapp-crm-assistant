@@ -12,6 +12,7 @@ MVP local para registrar notas comerciales, follow-ups, tareas, archivos Excel y
 - Parser local por reglas en español rioplatense, sin llamadas externas.
 - Telegram Bot API por long polling para usarlo desde el celular sin hosting.
 - Transcripción local con `faster-whisper` opcional, sin APIs pagas.
+- Google Calendar opcional para crear reuniones cuando hay fecha y hora.
 - Integración WhatsApp preparada solo como diseño defensivo: con `STRICT_ZERO_COST=true` se bloquea cualquier envío que pueda generar costo.
 
 ## Por qué mantiene costo $0
@@ -22,6 +23,7 @@ MVP local para registrar notas comerciales, follow-ups, tareas, archivos Excel y
 - No requiere tarjeta de crédito.
 - Telegram usa Bot API oficial y long polling local.
 - La transcripción corre localmente con `faster-whisper`.
+- Google Calendar API usa OAuth de tu cuenta y no requiere APIs pagas para este uso personal.
 - WhatsApp queda apagado por defecto y bloqueado en modo estricto.
 
 Limitación deliberada: sin modelos locales instalados, el parsing es heurístico. Para audios reales, el proyecto soporta `faster-whisper` local sin APIs pagas.
@@ -74,6 +76,46 @@ Desde Telegram podés mandar:
 - documentos para guardar y revisar.
 
 Importante: los mensajes pasan por Telegram. No usar información confidencial real de clientes ni información interna bancaria hasta validación de Compliance/InfoSec.
+
+## Reuniones y Google Calendar
+
+El bot detecta reuniones con fecha y hora. Ejemplos:
+
+```text
+Reunión con Cliente A mañana a las 10 para revisar capital de trabajo.
+Me junto con Cliente B el jueves 15:30.
+```
+
+Si Google Calendar no está configurado, responde con la fecha y hora detectadas y no crea el evento.
+
+Para habilitar creación automática en Google Calendar:
+
+1. Crear un proyecto en Google Cloud.
+2. Habilitar Google Calendar API.
+3. Crear credenciales OAuth de tipo Desktop app.
+4. Descargar el JSON y guardarlo como:
+
+```text
+data/google/credentials.json
+```
+
+5. Instalar dependencias opcionales:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-google.txt
+```
+
+6. En `.env`, configurar:
+
+```env
+GOOGLE_CALENDAR_ENABLED=true
+GOOGLE_CALENDAR_ID=primary
+GOOGLE_CALENDAR_CREDENTIALS_PATH=./data/google/credentials.json
+GOOGLE_CALENDAR_TOKEN_PATH=./data/google/token.json
+DEFAULT_MEETING_DURATION_MINUTES=30
+```
+
+La primera vez que cree una reunión, se abre el navegador para autorizar tu cuenta de Google. El token queda local en `data/google/token.json`, que está ignorado por git.
 
 ## Notas de voz reales
 
