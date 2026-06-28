@@ -21,7 +21,7 @@ TASK_KEYWORDS = [
 STAGE_KEYWORDS = {
     "proposal": ["propuesta", "pricing", "cotización", "cotizacion"],
     "negotiation": ["negociación", "negociacion", "negociando"],
-    "meeting_scheduled": ["reunión", "reunion", "junté", "junte", "meeting"],
+    "meeting_scheduled": ["reunión", "reunion", "junté", "junte", "juntar", "me junto", "juntarme", "meeting"],
     "contacted": ["contacté", "contacte", "escribí", "escribi", "llamé", "llame"],
     "closed_lost": ["quedó frío", "quedo frio", "no insistir", "perdido"],
     "closed_won": ["cerrado", "ganado", "aceptó", "acepto"],
@@ -60,6 +60,12 @@ def parse_text(text: str, base_date: date | None = None) -> ParsedMessage:
 
     if not client_alias and not company_name:
         missing.append("cliente o empresa")
+    if stage == "meeting_scheduled":
+        meeting_date = _first_meeting_date(dates)
+        if not meeting_date:
+            missing.append("fecha de reunión")
+        elif not meeting_date.time:
+            missing.append("hora de reunión")
     if "frío" in lower or "frio" in lower or "no insistir" in lower:
         risk_flags.append("Cliente con baja temperatura comercial o pedido de no insistir")
 
@@ -136,6 +142,7 @@ def _trim_entity(value: str) -> str:
 
 def _extract_dates(lower: str, base: date) -> list[DetectedDate]:
     dates: list[DetectedDate] = []
+    detected_time = _extract_time(lower)
     relative = {
         "hoy": base,
         "mañana": base + timedelta(days=1),
@@ -145,7 +152,7 @@ def _extract_dates(lower: str, base: date) -> list[DetectedDate]:
     }
     for word, resolved in relative.items():
         if word in lower:
-            dates.append(DetectedDate(date=resolved.isoformat(), meaning=_date_meaning(lower)))
+            dates.append(DetectedDate(date=resolved.isoformat(), time=detected_time, meaning=_date_meaning(lower)))
 
     weekdays = {
         "lunes": 0,
@@ -162,15 +169,38 @@ def _extract_dates(lower: str, base: date) -> list[DetectedDate]:
         if re.search(rf"\b{word}\b", lower):
             delta = (idx - base.weekday()) % 7
             delta = 7 if delta == 0 else delta
-            dates.append(DetectedDate(date=(base + timedelta(days=delta)).isoformat(), meaning=_date_meaning(lower)))
+            dates.append(
+                DetectedDate(
+                    date=(base + timedelta(days=delta)).isoformat(),
+                    time=detected_time,
+                    meaning=_date_meaning(lower),
+                )
+            )
     return _unique_dates(dates)
+
+
+def _extract_time(lower: str) -> str | None:
+    patterns = [
+        r"\b(?:a las|alas|tipo|cerca de|aprox\.?)\s+([01]?\d|2[0-3])[:.]([0-5]\d)\b",
+        r"\b([01]?\d|2[0-3])[:.]([0-5]\d)\b",
+        r"\b(?:a las|alas|tipo|cerca de|aprox\.?)\s+([01]?\d|2[0-3])\s*(?:hs|h|horas)?\b",
+        r"\b([01]?\d|2[0-3])\s*(?:hs|h)\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, lower)
+        if not match:
+            continue
+        hour = int(match.group(1))
+        minute = int(match.group(2)) if match.lastindex and match.lastindex >= 2 and match.group(2) else 0
+        return f"{hour:02d}:{minute:02d}"
+    return None
 
 
 def _unique_dates(dates: list[DetectedDate]) -> list[DetectedDate]:
     seen = set()
     unique = []
     for item in dates:
-        key = (item.date, item.meaning)
+        key = (item.date, item.time, item.meaning)
         if key not in seen:
             seen.add(key)
             unique.append(item)
@@ -178,7 +208,7 @@ def _unique_dates(dates: list[DetectedDate]) -> list[DetectedDate]:
 
 
 def _date_meaning(lower: str) -> str:
-    if "reunión" in lower or "reunion" in lower or "junt" in lower:
+    if "reunión" in lower or "reunion" in lower or "junt" in lower or "meeting" in lower:
         return "meeting"
     if "venc" in lower or "deadline" in lower:
         return "deadline"
@@ -242,6 +272,13 @@ def _message_type(tasks: list[ParsedTask], amount: float | None, stage: str) -> 
     if tasks:
         return "client_update"
     return "note"
+
+
+def _first_meeting_date(dates: list[DetectedDate]) -> DetectedDate | None:
+    for item in dates:
+        if item.meaning == "meeting":
+            return item
+    return dates[0] if dates else None
 
 
 def _default_probability(stage: str) -> float | None:
