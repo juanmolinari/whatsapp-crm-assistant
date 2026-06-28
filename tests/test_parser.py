@@ -27,3 +27,12 @@ def test_parser_marks_missing_client_for_review():
 
     assert parsed.needs_review is True
     assert "cliente o empresa" in parsed.missing_information
+
+
+def test_parser_detects_meeting_date_and_time():
+    parsed = parse_text("Reunión con Cliente A mañana a las 10 para revisar capital de trabajo.", base_date=date(2026, 6, 28))
+
+    assert parsed.commercial_context.stage == "meeting_scheduled"
+    assert parsed.dates_detected[0].date == "2026-06-29"
+    assert parsed.dates_detected[0].time == "10:00"
+    assert parsed.dates_detected[0].meaning == "meeting"
