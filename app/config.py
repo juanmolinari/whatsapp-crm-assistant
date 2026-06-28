@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     local_llm_provider: str = "heuristic"
     local_llm_model: str = ""
     local_transcription_provider: str = "simulated"
+    local_transcription_model: str = "base"
     telegram_enabled: bool = False
     telegram_bot_token: str = ""
     owner_telegram_user_id: str = ""
