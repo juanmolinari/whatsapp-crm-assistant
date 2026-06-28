@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     telegram_enabled: bool = False
     telegram_bot_token: str = ""
     owner_telegram_user_id: str = ""
+    google_calendar_enabled: bool = False
+    google_calendar_id: str = "primary"
+    google_calendar_credentials_path: str = "./data/google/credentials.json"
+    google_calendar_token_path: str = "./data/google/token.json"
+    default_meeting_duration_minutes: int = 30
     whatsapp_enabled: bool = False
     whatsapp_mode: str = "test_only"
     whatsapp_token: str = ""
