@@ -125,6 +125,20 @@ class DailySummary(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
 
+class CalendarEvent(Base):
+    __tablename__ = "calendar_events"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    raw_input_id: Mapped[int | None] = mapped_column(ForeignKey("raw_inputs.id"), nullable=True)
+    provider: Mapped[str] = mapped_column(String(50), default="google")
+    provider_event_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    title: Mapped[str] = mapped_column(String(255))
+    start_at: Mapped[datetime] = mapped_column(DateTime, index=True)
+    end_at: Mapped[datetime] = mapped_column(DateTime)
+    status: Mapped[str] = mapped_column(String(50), default="created")
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
 class UnresolvedEntity(Base):
     __tablename__ = "unresolved_entities"
 
