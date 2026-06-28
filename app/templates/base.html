@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Asistente CRM Local $0</title>
+    <link rel="stylesheet" href="/static/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">MVP local</p>
+        <h1>Asistente CRM / Secretario</h1>
+      </div>
+      <div class="status">
+        <span>STRICT_ZERO_COST={{ "true" if settings.strict_zero_cost else "false" }}</span>
+        <span>WhatsApp={{ "on" if settings.whatsapp_enabled else "off" }}</span>
+      </div>
+    </header>
+    <main class="shell">
+      {% block content %}{% endblock %}
+    </main>
+  </body>
+</html>
