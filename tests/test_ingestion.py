@@ -6,7 +6,7 @@ from app import models
 from app.services.excel import process_excel
 from app.services.parser import parse_text
 from app.services.repository import save_parsed_input
-from app.services.summary import generate_daily_summary
+from app.services.summary import generate_daily_summary, render_summary
 from app.services.transcription import transcribe_audio
 from app.services.zero_cost import CostBlockedError, assert_zero_cost_allowed
 
@@ -50,6 +50,27 @@ def test_daily_summary_is_generated(db_session):
 
     assert "Resumen diario" in summary.content
     assert "Follow-ups para hoy" in summary.content
+
+
+def test_daily_summary_omits_empty_sections(db_session):
+    summary = generate_daily_summary(db_session, date.today())
+
+    assert "Resumen de ayer" not in summary.content
+    assert "Oportunidades abiertas" not in summary.content
+    assert "Riesgos o temas sin resolver" not in summary.content
+    assert "Sin actividad registrada" in summary.content
+
+
+def test_render_summary_only_includes_populated_sections(db_session):
+    task = models.Task(description="Llamar para seguimiento", client_alias="Cliente A", due_date=date.today(), priority="medium")
+
+    content = render_summary(date.today(), [], [], [], [task], [], [])
+
+    assert "Follow-ups para hoy" in content
+    assert "Cliente A: Llamar para seguimiento" in content
+    assert "Resumen de ayer" not in content
+    assert "Oportunidades abiertas" not in content
+    assert "Riesgos o temas sin resolver" not in content
 
 
 def test_zero_cost_blocks_whatsapp():
