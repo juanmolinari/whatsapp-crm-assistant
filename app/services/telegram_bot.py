@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from app import models
 from app.config import Settings
+from app.services.calendar import handle_meeting_calendar
 from app.services.commands import run_command
 from app.services.excel import process_excel
 from app.services.parser import parse_text
@@ -88,7 +89,10 @@ class TelegramBot:
         if text.startswith("/"):
             return run_command(db, text)
         parsed = parse_text(text)
-        save_parsed_input(db, "telegram_text", text, parsed)
+        raw = save_parsed_input(db, "telegram_text", text, parsed)
+        calendar_result = handle_meeting_calendar(db, raw.id, parsed)
+        if calendar_result.attempted:
+            return calendar_result.message
         task_count = len(parsed.tasks)
         review = " Sí, requiere revisión." if parsed.needs_review else ""
         return f"Guardado. Tipo: {parsed.message_type}. Tareas detectadas: {task_count}.{review}"
@@ -101,12 +105,15 @@ class TelegramBot:
             db.add(models.UploadedFile(filename=stored.name, stored_path=str(stored), content_type="telegram/document"))
             db.commit()
             return f"Excel procesado. Filas importadas: {count}."
-        if source_hint == "audio" or suffix in {".mp3", ".wav", ".m4a", ".ogg", ".webm"}:
+        if source_hint == "audio" or suffix in {".mp3", ".wav", ".m4a", ".ogg", ".oga", ".webm"}:
             transcript = transcribe_audio(stored)
             parsed = parse_text(transcript)
             raw = save_parsed_input(db, "telegram_audio", transcript, parsed)
+            calendar_result = handle_meeting_calendar(db, raw.id, parsed)
             db.add(models.UploadedFile(raw_input_id=raw.id, filename=stored.name, stored_path=str(stored), content_type="telegram/audio"))
             db.commit()
+            if calendar_result.attempted:
+                return f"Audio transcripto: {transcript[:500]}\n\n{calendar_result.message}"
             return f"Audio guardado. Transcripción: {transcript[:700]}"
         text = f"Archivo recibido por Telegram: {stored.name}. Revisar manualmente."
         parsed = parse_text(text)
