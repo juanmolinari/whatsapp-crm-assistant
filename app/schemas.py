@@ -26,6 +26,7 @@ class ParsedTask(BaseModel):
 
 class DetectedDate(BaseModel):
     date: str
+    time: str | None = None
     meaning: str = "other"
 
 
