@@ -10,8 +10,8 @@ MVP local para registrar notas comerciales, follow-ups, tareas, archivos Excel y
 - SQLite en `data/assistant.db`.
 - Archivos en `data/uploads`.
 - Parser local por reglas en español rioplatense, sin llamadas externas.
-- Transcripción local simulada por defecto. Se puede reemplazar por faster-whisper local.
 - Telegram Bot API por long polling para usarlo desde el celular sin hosting.
+- Transcripción local con `faster-whisper` opcional, sin APIs pagas.
 - Integración WhatsApp preparada solo como diseño defensivo: con `STRICT_ZERO_COST=true` se bloquea cualquier envío que pueda generar costo.
 
 ## Por qué mantiene costo $0
@@ -21,9 +21,10 @@ MVP local para registrar notas comerciales, follow-ups, tareas, archivos Excel y
 - Corre en tu computadora.
 - No requiere tarjeta de crédito.
 - Telegram usa Bot API oficial y long polling local.
+- La transcripción corre localmente con `faster-whisper`.
 - WhatsApp queda apagado por defecto y bloqueado en modo estricto.
 
-Limitación deliberada: sin modelos locales instalados, el parsing es heurístico y la transcripción de audio es simulada. Para audios reales, instalá una transcripción local como faster-whisper y conectala en `app/services/transcription.py`.
+Limitación deliberada: sin modelos locales instalados, el parsing es heurístico. Para audios reales, el proyecto soporta `faster-whisper` local sin APIs pagas.
 
 ## Instalación
 
@@ -73,6 +74,23 @@ Desde Telegram podés mandar:
 - documentos para guardar y revisar.
 
 Importante: los mensajes pasan por Telegram. No usar información confidencial real de clientes ni información interna bancaria hasta validación de Compliance/InfoSec.
+
+## Notas de voz reales
+
+Para transcribir notas de voz localmente, instalá el paquete opcional:
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-audio.txt
+```
+
+En `.env`, usá:
+
+```env
+LOCAL_TRANSCRIPTION_PROVIDER=faster-whisper
+LOCAL_TRANSCRIPTION_MODEL=base
+```
+
+La primera nota de voz puede tardar porque descarga el modelo local. No usa OpenAI API ni servicios pagos. Si querés algo más liviano, podés usar `LOCAL_TRANSCRIPTION_MODEL=tiny`; si querés más precisión, probá `small`.
 
 ## Resumen diario manual
 
